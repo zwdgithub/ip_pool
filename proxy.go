@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -14,7 +15,7 @@ import (
 
 var (
 	r        = rand.New(rand.NewSource(time.Now().Unix()))
-	checkUrl = "http://myip.ipip.net/"
+	checkUrl = "https://www.alipay.com/"
 )
 
 type ProxyProcess struct {
@@ -69,8 +70,18 @@ func RandString(len int) string {
 }
 
 func (proxy *ProxyProcess) getProxyPushToRedis() {
+	n := rand.Intn(99999)
+	var carrier int
+	switch n % 3 {
+	case 0:
+		carrier = 1
+	case 1:
+		carrier = 2
+	case 3:
+		carrier = 6
+	}
 	client := &http.Client{}
-	resp, err := client.Get("https://dev.kdlapi.com/api/getproxy/?orderid=949722172204228&num=100&protocol=2&method=1&an_ha=1&sp1=1&sp2=1&quality=1&sort=2&sep=2")
+	resp, err := client.Get(fmt.Sprintf("http://dev.kdlapi.com/api/getproxy/?orderid=949722172204228&num=100&carrier=%d&protocol=2&method=1&an_ha=1&sep=2", carrier))
 	if err != nil {
 		log.Printf("getProxyPushToRedis get checkUrl err: %v", err)
 		return
@@ -93,17 +104,17 @@ func (proxy *ProxyProcess) ValidRepeatCheck() {
 		return
 	}
 	for _, ip := range list {
-		proxy.redis.AddIpToWaitingList(ip)
+		proxy.redis.AddValidIpToWaitingList(ip)
 	}
 }
 
-func (proxy *ProxyProcess) Run() {
+func (proxy *ProxyProcess) Run(f func() (string, error)) {
 	var count int64 = 0
 	checkChan := make(chan bool, 100)
 	for {
 		atomic.AddInt64(&count, 1)
 		log.Printf("the %d times", count)
-		ip, err := proxy.redis.GetWaitingIp()
+		ip, err := f()
 		if err != nil {
 			log.Printf("get waiting ip error: %v", err)
 			time.Sleep(time.Second * 5)

@@ -10,7 +10,8 @@ import (
 const (
 	ValidIpSortedSetKey = "ip_pool_ValidIpSortedSetKey"
 	WaitingKey          = "ip_pool_WaitingKey"
-	EndTimeStamp        = 2543902107 // 2050-08-12 15:28:27
+	WaitingRepeatKey    = "ip_pool_WaitingRepeatKey"
+	EndTimeStamp        = 2543929475000 / 100 // 2050-08-12 15:28:27
 )
 
 type RedisUtil struct {
@@ -27,7 +28,8 @@ func NewRedis() *RedisUtil {
 }
 
 func (r *RedisUtil) GetProxy() (string, error) {
-	ip, err := r.conn.ZRange(ValidIpSortedSetKey, 0, 100).Result()
+	n := rand.Intn(5)
+	ip, err := r.conn.ZRange(ValidIpSortedSetKey, 0, int64(n)).Result()
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +42,7 @@ func (r *RedisUtil) GetProxy() (string, error) {
 
 func (r *RedisUtil) AddProxy(ip string) {
 	r.conn.ZAdd(ValidIpSortedSetKey, redis.Z{
-		Score:  float64(EndTimeStamp - time.Now().Unix()),
+		Score:  float64(EndTimeStamp - time.Now().UnixNano()/1e6/100),
 		Member: ip,
 	})
 }
@@ -53,10 +55,18 @@ func (r *RedisUtil) AddIpToWaitingList(ip string) {
 	r.conn.LPush(WaitingKey, ip)
 }
 
+func (r *RedisUtil) AddValidIpToWaitingList(ip string) {
+	r.conn.LPush(WaitingRepeatKey, ip)
+}
+
+func (r *RedisUtil) GetValidWaitingIp() (string, error) {
+	return r.conn.RPop(WaitingRepeatKey).Result()
+}
+
 func (r *RedisUtil) GetWaitingIp() (string, error) {
 	return r.conn.RPop(WaitingKey).Result()
 }
 
 func (r *RedisUtil) AllValidIp() ([]string, error) {
-	return r.conn.ZRevRange(ValidIpSortedSetKey, 0, -1).Result()
+	return r.conn.ZRevRange(ValidIpSortedSetKey, 0, 100).Result()
 }
