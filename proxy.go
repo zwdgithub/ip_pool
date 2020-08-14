@@ -126,5 +126,10 @@ func (proxy *ProxyProcess) Run(f func() (string, error)) {
 }
 
 func (proxy *ProxyProcess) GetProxy() (string, error) {
-	return proxy.redis.GetProxy()
+	ip, err := proxy.redis.GetProxy()
+	if err != nil {
+		return ip, err
+	}
+	proxy.redis.AddValidIpToWaitingList(ip)
+	return ip, err
 }
