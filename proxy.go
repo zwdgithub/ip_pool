@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	xhttp "github.com/zwdgithub/simple_http"
 	"log"
 	"math/rand"
 	"net/http"
@@ -44,12 +44,13 @@ func (proxy *ProxyProcess) Valid(ip string, checkChan chan bool) bool {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		Proxy:           p,
 	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   time.Second * 3,
-	}
+
 	start := time.Now().Unix()
-	_, err := client.Get(checkUrl)
+	err := xhttp.NewHttpUtil().
+		CustomClient(func(client *http.Client) {
+			client.Transport = transport
+			client.Timeout = time.Second * 3
+		}).Get(checkUrl, nil).Do().Error()
 	if err != nil {
 		proxy.redis.DeleteProxy(ip)
 		log.Printf("use proxy get checkUrl error is: %v", err)
@@ -80,18 +81,13 @@ func (proxy *ProxyProcess) getProxyPushToRedis() {
 	case 3:
 		carrier = 6
 	}
-	client := &http.Client{}
-	resp, err := client.Get(fmt.Sprintf("http://dev.kdlapi.com/api/getproxy/?orderid=949722172204228&num=100&carrier=%d&protocol=2&method=1&an_ha=1&sep=2", carrier))
+	u := fmt.Sprintf("http://dev.kdlapi.com/api/getproxy/?orderid=949722172204228&num=100&carrier=%d&protocol=2&method=1&an_ha=1&sep=2", carrier)
+	content, err := xhttp.NewHttpUtil().Get(u, nil).Do().RContent()
 	if err != nil {
 		log.Printf("getProxyPushToRedis get checkUrl err: %v", err)
 		return
 	}
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	for _, ip := range strings.Split(string(bytes), "\n") {
+	for _, ip := range strings.Split(content, "\n") {
 		log.Printf("push %s to waiting list", ip)
 		proxy.redis.AddIpToWaitingList(ip)
 	}

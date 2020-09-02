@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"testing"
@@ -32,4 +34,23 @@ func TestHttp(t *testing.T) {
 	_, err := client.Get(checkUrl)
 	fmt.Println(err)
 
+}
+
+func Get(ctx context.Context, c chan string) {
+	n := rand.Intn(10)
+	time.Sleep(n)
+	for {
+		select {
+		case <-ctx.Done():
+
+		}
+	}
+}
+
+func TestGet(t *testing.T) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	proxy := NewProxy()
+	ip, err := proxy.GetProxy()
+	go Get(ctx, 1)
 }
