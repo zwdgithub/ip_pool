@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -32,4 +33,18 @@ func TestHttp(t *testing.T) {
 	_, err := client.Get(checkUrl)
 	fmt.Println(err)
 
+}
+
+func CancelTest(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+
+	}
+}
+
+func TestMultiGet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	CancelTest(ctx)
+	cancel()
 }
