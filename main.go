@@ -9,9 +9,10 @@ func main() {
 
 	proxy := NewProxy()
 	ticker := time.NewTicker(time.Second * 3)
+	kdlGetter := &KDLProxyGetter{}
 	go func() {
 		for range ticker.C {
-			proxy.getProxyPushToRedis()
+			proxy.GetProxyPushTo(kdlGetter)
 		}
 	}()
 	ticker1 := time.NewTicker(time.Second * 2)

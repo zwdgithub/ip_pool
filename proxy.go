@@ -2,19 +2,14 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync/atomic"
 	"time"
 )
 
 var (
-	r        = rand.New(rand.NewSource(time.Now().Unix()))
 	checkUrl = "https://www.alipay.com/"
 )
 
@@ -60,38 +55,12 @@ func (proxy *ProxyProcess) Valid(ip string, checkChan chan bool) bool {
 	return result
 }
 
-func RandString(len int) string {
-	bytes := make([]byte, len)
-	for i := 0; i < len; i++ {
-		b := r.Intn(26) + 65
-		bytes[i] = byte(b)
-	}
-	return string(bytes)
-}
-
-func (proxy *ProxyProcess) getProxyPushToRedis() {
-	n := rand.Intn(99999)
-	var carrier int
-	switch n % 3 {
-	case 0:
-		carrier = 1
-	case 1:
-		carrier = 2
-	case 3:
-		carrier = 6
-	}
-	client := &http.Client{}
-	resp, err := client.Get(fmt.Sprintf("http://dev.kdlapi.com/api/getproxy/?orderid=949722172204228&num=100&carrier=%d&protocol=2&method=1&an_ha=1&sep=2", carrier))
+func (proxy *ProxyProcess) GetProxyPushTo(getter ProxyGetter) {
+	list, err := getter.GetProxy()
 	if err != nil {
 		log.Printf("getProxyPushToRedis get checkUrl err: %v", err)
-		return
 	}
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
-	for _, ip := range strings.Split(string(bytes), "\n") {
+	for _, ip := range list {
 		log.Printf("push %s to waiting list", ip)
 		proxy.redis.AddIpToWaitingList(ip)
 	}
